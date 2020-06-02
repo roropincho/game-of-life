@@ -162,6 +162,7 @@
 
 (define (getAttribute obj att)
 		(if (and (isDOMObj obj)
+				 (not (isDocumentObj obj))
 				 (string? att))
 			(jsObj->scmObj (##inline-host-expression "(@1@).getAttribute(@2@);"
 													 obj
@@ -178,6 +179,7 @@
 
 (define (setAttribute obj att val)
 		(if (and (isDOMObj obj)
+				 (not (isDocumentObj obj))
 				 (string? att)
 				 (isScmObject val))
 			(##inline-host-statement "(@1@).setAttribute(@2@, @3@);"
@@ -188,6 +190,7 @@
 
 (define (removeAttribute obj att)
 		(if (and (isDOMObj obj)
+				 (not (isDocumentObj obj))
 				 (string? att))
 			(##inline-host-statement "(@1@).removeAttribute(@2@);"
 									 obj

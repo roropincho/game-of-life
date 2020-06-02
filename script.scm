@@ -127,7 +127,7 @@
 								 (string-append base
 												"<td id='"
 												id
-											    "' onclick='cellClick(this.id);'></td>")
+											    "' onclick='cellClick(this.id);'><div></div></td>")
 								 noROw))
 			base))
 
@@ -227,6 +227,7 @@
 (##inline-host-statement "stopLife = g_scm2host(@1@);" stopLife)
 
 (begin
+	(##inline-host-statement "document.title = 'Game of Life | Scheme to Javascript';")
 	(appendHTML (querySelector "head")
 				(<style> type: "text/css"
 						 (string-append "* {"
@@ -240,31 +241,39 @@
 											"text-align: center;"
 										"}"
 										"table {"
-											"border-collapse: separate;"
-											"border-spacing: 5px;"
-											"margin: 0 auto;"
+											; "border-collapse: separate;"
+											; "border-spacing: 5px;"
+											"margin: 10px auto;"
 											"padding: 10px;"
-											"width: " (number->string (+ 20 (* nbCol 25))) "px;"
+											"width: " (number->string (* nbCol 25)) "px;"
 										"}"
 										"tr {"
-											"height: 20px;"
+											"height: 25px;"
 										"}"
 										"td {"
+											"position: relative;"
+											"width: 25px;"
+										"}"
+										"td div {"
 											"background-color: lightGrey;"
-											"border-radius: 12.5px;"
-											"width: 20px;"
+											"border-radius: 50%;"
+											"bottom: 2.5px;"
+											"left: 2.5px;"
+											"position: absolute;"
+											"right: 2.5px;"
+											"top: 2.5px;"
 										"}"
 										"td:not(.dead):not(.alive):hover {"
 											"cursor: pointer;"
 											"opacity: 0.5;"
 										"}"
-										"td.selected {"
+										"td.selected div {"
 											"background-color: salmon;"
 										"}"
 										"td.dead {"
 											"opacity: 0.5;"
 										"}"
-										"td.alive {"
+										"td.alive div {"
 											"background-color: darkRed;"
 										"}"
 										"button, button:disabled:hover {"
