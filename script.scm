@@ -141,26 +141,38 @@
 
 (define (construct-cells i base no-row)
   (if (< i nb-col)
-      (let ((id (make-id i no-row)))
+      (let ((id-temp (make-id i no-row)))
         (construct-cells
          (+ i 1)
-         (append-strings
-          `(,base
-            "<td id='"
-            ,id
-            "' onclick='cellClick(this.id);'><div></div></td>"))
+         (string-append
+          base
+          (html->string
+           (<td> id: id-temp
+                 onclick: "cellClick(this.id);"
+                 (<div>))))
          no-row))
       base))
+
+(define (construct-row-content i)
+  (if (< i nb-row)
+      (begin
+        (set-inner-html
+         (query-selector
+          (string-append
+           "tr:nth-of-type("
+           (number->string (+ i 1))
+           ")"))
+         (construct-cells 0 "" i))
+        (construct-row-content (+ i 1)))))
 
 (define (construct-rows i base)
   (if (< i nb-row)
       (construct-rows
        (+ i 1)
-       (append-strings
-        `(,base
-          "<tr>"
-          ,(construct-cells 0 "" i)
-          "</tr>")))
+       (string-append
+        base
+        (html->string
+         (<tr>))))
       base))
 
 (define (init-life)
@@ -347,6 +359,8 @@
   (set-inner-html
    (query-selector "table")
    (construct-rows 0 ""))
+
+  (construct-row-content 0)
   
   (document.write
    (<button>
