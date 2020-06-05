@@ -6,14 +6,19 @@
  (extended-bindings))
 
 (define nb-col 25)
+
 (define nb-row 25)
 
 (define alive (make-vector nb-row))
+
 (define around (make-vector nb-row))
+
 (define old-around (make-vector nb-row))
 
 (define game-on #f)
+
 (define id-go-btn "go-btn")
+
 (define id-stop-btn "stop-btn")
 
 (define (make-id x y)
@@ -34,6 +39,7 @@
           (begin
             (vector-set! old-around i (vector-copy (vector-ref around i)))
             (transfer-row (+ i 1)))))
+
     (define (cols-around x y dif-col dif-row was-alive)
       (if (<= dif-col 1)
           (begin
@@ -47,11 +53,13 @@
                                                                                  (- 0 old-nb))
                                                                             1))))))
             (cols-around x y (+ dif-col 1) dif-row was-alive))))
+
     (define (rows-around x y dif-row was-alive)
       (if (<= dif-row 1)
           (begin
             (cols-around x y -1 dif-row was-alive)
             (rows-around x y (+ dif-row 1) was-alive))))
+
     (define (iterate-on-row i no-row)
       (if (< i nb-col)
           (begin
@@ -71,11 +79,13 @@
                 (if (not (equal? was-alive is-alive))
                     (rows-around i no-row -1 was-alive))))
             (iterate-on-row (+ i 1) no-row))))
+
     (define (iterate-on-array i)
       (if (< i nb-row)
           (begin
             (iterate-on-row 0 i)
             (iterate-on-array (+ i 1)))))
+
     (define (reset-grid)
       (let ((cell-list (query-selector-all "td")))
         (let ((list-length (js->scm (##inline-host-expression "(@1@).length;" cell-list))))
@@ -89,6 +99,7 @@
              (lst-loop 0))
            cell-list
            list-length))))
+
     (if game-on
         (begin
           (custom-timeout)
@@ -146,6 +157,7 @@
                                   (vector init-value))
                    init-value)
           array))
+
     (define (fill-array i array init-value)
       (if (< i nb-row)
           (fill-array (+ i 1)
@@ -153,6 +165,7 @@
                                     (vector (fill-row 0 (vector) init-value)))
                      init-value)
           array))
+
     (define (cols-around x y dif-col dif-row)
       (if (<= dif-col 1)
           (begin
@@ -165,11 +178,13 @@
                   (vector-set! (vector-ref old-around ind-y) ind-x
                                (+ 1 (vector-ref (vector-ref old-around ind-y) ind-x)))))
             (cols-around x y (+ dif-col 1) dif-row))))
+
     (define (rows-around x y dif-row)
       (if (<= dif-row 1)
           (begin
             (cols-around x y -1 dif-row)
             (rows-around x y (+ dif-row 1)))))
+
     (define (iterate-on-row i no-row)
       (if (< i nb-col)
           (begin
@@ -186,11 +201,13 @@
                     (if is-alive
                         (rows-around i no-row -1))))))
             (iterate-on-row (+ i 1) no-row))))
+
     (define (iterate-on-array i)
       (if (< i nb-row)
           (begin
             (iterate-on-row 0 i)
             (iterate-on-array (+ i 1)))))
+
     (begin
       (set! alive (fill-array 0 (vector) #f))
       (set! around (fill-array 0 (vector) 0))
