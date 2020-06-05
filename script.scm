@@ -28,8 +28,7 @@
                        "_"
                        txt-y))))
 
-(define game-of-life
-  (lambda ()
+(define (game-of-life)
     (define (transfer-row i)
       (if (< i nb-row)
           (begin
@@ -98,15 +97,14 @@
         (begin
           (reset-grid)
           (remove-attribute (get-element-by-id id-go-btn)
-                           "disabled")))))
+                           "disabled"))))
 
 (##inline-host-statement "gameOfLife = g_scm2host(@1@);" game-of-life)
 
 (define (custom-timeout)
   (##inline-host-statement "setTimeout(gameOfLife, 500);"))
 
-(define cell-click
-  (lambda (id)
+(define (cell-click id)
     (if (not game-on)
         (let ((cell (get-element-by-id id)))
           (let ((old-class (get-attribute cell "class")))
@@ -116,7 +114,7 @@
                                   (string=? ""
                                             old-class))
                               "selected"
-                              "")))))))
+                              ""))))))
 
 (##inline-host-statement "cellClick = g_scm2host(@1@);" cell-click)
 
@@ -140,8 +138,7 @@
                                     "</tr>"))
       base))
 
-(define init-life
-  (lambda ()
+(define (init-life)
     (define (fill-row i array init-value)
       (if (< i nb-row)
           (fill-row (+ i 1)
@@ -200,29 +197,27 @@
       (set! old-around (fill-array 0 (vector) 0))
       (iterate-on-array 0)
       (set! game-on #t)
-      (custom-timeout))))
+      (custom-timeout)))
 
-(define start-life
-  (lambda ()
+(define (start-life)
     (set-attribute (get-element-by-id id-go-btn)
                   "disabled"
                   "true")
     (let ((stop-btn (get-element-by-id id-stop-btn)))
       (if (has-attribute stop-btn "disabled")
           (remove-attribute stop-btn "disabled")))
-    (init-life)))
+    (init-life))
 
 (##inline-host-statement "startLife = g_scm2host(@1@);" start-life)
 
-(define stop-life
-  (lambda ()
+(define (stop-life)
     (set-attribute (get-element-by-id id-stop-btn)
                   "disabled"
                   "true")
     (let ((go-btn (get-element-by-id id-go-btn)))
       (if (has-attribute go-btn "disabled")
           (remove-attribute go-btn "disabled")))
-    (set! game-on #f)))
+    (set! game-on #f))
 
 (##inline-host-statement "stopLife = g_scm2host(@1@);" stop-life)
 
