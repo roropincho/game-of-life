@@ -24,14 +24,14 @@
 (define (make-id x y)
   (let ((txt-x (number->string x))
         (txt-y (number->string y)))
-    (string-append "x"
-                   (if (null? txt-x)
-                       "_"
-                       txt-x)
-                   "y"
-                   (if (null? txt-y)
-                       "_"
-                       txt-y))))
+    (append-strings `("x"
+                      ,(if (null? txt-x)
+                           "_"
+                           txt-x)
+                      "y"
+                      ,(if (null? txt-y)
+                           "_"
+                           txt-y)))))
 
 (define (game-of-life)
     (define (transfer-row i)
@@ -133,20 +133,20 @@
   (if (< i nb-col)
       (let ((id (make-id i no-row)))
         (construct-cells (+ i 1)
-                        (string-append base
-                                       "<td id='"
-                                       id
-                                       "' onclick='cellClick(this.id);'><div></div></td>")
+                        (append-strings `(,base
+                                          "<td id='"
+                                          ,id
+                                          "' onclick='cellClick(this.id);'><div></div></td>"))
                         no-row))
       base))
 
 (define (construct-rows i base)
   (if (< i nb-row)
       (construct-rows (+ i 1)
-                     (string-append base
-                                    "<tr>"
-                                    (construct-cells 0 "" i)
-                                    "</tr>"))
+                     (append-strings `(,base
+                                       "<tr>"
+                                       ,(construct-cells 0 "" i)
+                                       "</tr>")))
       base))
 
 (define (init-life)
@@ -242,75 +242,73 @@
   (##inline-host-statement "document.title = 'Game of Life | Scheme to Javascript';")
   (append-html (query-selector "head")
               (<style> type: "text/css"
-                       (string-append "* {"
-                                      "border: 0;"
-                                      "border-collapse: collapse;"
-                                      "margin: 0;"
-                                      "padding: 0;"
-                                      "transition: 0.25s background-color, 0.25s color, 0.25s opacity;"
-                                      "}"
-                                      "body {"
-                                      "text-align: center;"
-                                      "}"
-                                      "table {"
-                                        ; "border-collapse: separate;"
-                                        ; "border-spacing: 5px;"
-                                      "margin: 10px auto;"
-                                      "padding: 10px;"
-                                      "width: " (number->string (* nb-col 25)) "px;"
-                                      "}"
-                                      "tr {"
-                                      "height: 25px;"
-                                      "}"
-                                      "td {"
-                                      "position: relative;"
-                                      "width: 25px;"
-                                      "}"
-                                      "td div {"
-                                      "background-color: lightGrey;"
-                                      "border-radius: 50%;"
-                                      "bottom: 2.5px;"
-                                      "left: 2.5px;"
-                                      "position: absolute;"
-                                      "right: 2.5px;"
-                                      "top: 2.5px;"
-                                      "}"
-                                      "td:not(.dead):not(.alive):hover {"
-                                      "cursor: pointer;"
-                                      "opacity: 0.5;"
-                                      "}"
-                                      "td.selected div {"
-                                      "background-color: salmon;"
-                                      "}"
-                                      "td.dead {"
-                                      "opacity: 0.5;"
-                                      "}"
-                                      "td.alive div {"
-                                      "background-color: darkRed;"
-                                      "}"
-                                      "button, button:disabled:hover {"
-                                      "background-color: lightGrey;"
-                                      "color: darkRed;"
-                                      "}"
-                                      "button {"
-                                      "border-radius: 12.5px;"
-                                      "margin: 0 0 0 15px;"
-                                      "padding: 10px 15px;"
-                                      "}"
-                                      "button + button {"
-                                      "margin-left: 5px;"
-                                      "}"
-                                      "button:disabled {"
-                                      "color: darkRed;"
-                                      "opacity: 0.25;"
-                                      "}"
-                                      "button:hover {"
-                                      "background-color: darkRed;"
-                                      "color: lightGrey;"
-                                      "}"
-                                      "button:not(:disabled):hover {"
-                                      "cursor: pointer;"
-                                      "}")))
+                       (append-strings `("* {"
+                                           "border: 0;"
+                                           "border-collapse: collapse;"
+                                           "margin: 0;"
+                                           "padding: 0;"
+                                           "transition: 0.25s background-color, 0.25s color, 0.25s opacity;"
+                                         "}"
+                                         "body {"
+                                           "text-align: center;"
+                                         "}"
+                                         "table {"
+                                           "margin: 10px auto;"
+                                           "padding: 10px;"
+                                           "width: " ,(number->string (* nb-col 25)) "px;"
+                                         "}"
+                                         "tr {"
+                                           "height: 25px;"
+                                         "}"
+                                         "td {"
+                                           "position: relative;"
+                                           "width: 25px;"
+                                         "}"
+                                         "td div {"
+                                           "background-color: lightGrey;"
+                                           "border-radius: 50%;"
+                                           "bottom: 2.5px;"
+                                           "left: 2.5px;"
+                                           "position: absolute;"
+                                           "right: 2.5px;"
+                                           "top: 2.5px;"
+                                         "}"
+                                         "td:not(.dead):not(.alive):hover {"
+                                           "cursor: pointer;"
+                                           "opacity: 0.5;"
+                                         "}"
+                                         "td.selected div {"
+                                           "background-color: salmon;"
+                                         "}"
+                                         "td.dead {"
+                                           "opacity: 0.5;"
+                                         "}"
+                                         "td.alive div {"
+                                           "background-color: darkRed;"
+                                         "}"
+                                         "button, button:disabled:hover {"
+                                           "background-color: lightGrey;"
+                                           "color: darkRed;"
+                                         "}"
+                                         "button {"
+                                           "border-radius: 12.5px;"
+                                           "margin: 0 0 0 15px;"
+                                           "padding: 10px 15px;"
+                                         "}"
+                                         "button + button {"
+                                           "margin-left: 5px;"
+                                         "}"
+                                         "button:disabled {"
+                                           "color: darkRed;"
+                                           "opacity: 0.25;"
+                                         "}"
+                                         "button:hover {"
+                                           "background-color: darkRed;"
+                                           "color: lightGrey;"
+                                         "}"
+                                         "button:not(:disabled):hover {"
+                                           "cursor: pointer;"
+                                         "}"))))
   (document.write (<table>))
   (set-inner-html (query-selector "table")
                 (construct-rows 0 ""))
