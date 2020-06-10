@@ -21,6 +21,23 @@
 
 (define id-stop-btn "stop-btn")
 
+(define (make-interval i j lst)
+  (if (> i j)
+      lst
+      (make-interval
+       i
+       (- j 1)
+       (cons j lst))))
+
+(define int-col
+  (make-interval 0 (- nb-col 1) '()))
+
+(define int-row
+  (make-interval 0 (- nb-row 1) '()))
+
+(define int-dif-around
+  (make-interval -1 1 '()))
+
 (define (make-id x y)
   (let ((txt-x (number->string x))
         (txt-y (number->string y)))
@@ -34,86 +51,162 @@
             "_"
             txt-y)))))
 
-(define (game-of-life)
-  (define (transfer-row i)
-    (if (< i nb-row)
+(define (reset-lst lst size)
+  (define (lst-loop i)
+    (if (< i size)
         (begin
-          (vector-set!
-           old-around
-           i
-           (vector-copy (vector-ref around i)))
-          (transfer-row (+ i 1)))))
+          (remove-attribute
+           (##inline-host-expression "(@1@)[@2@];" lst (scm->js i))
+           "class")
+          (lst-loop (+ i 1)))))
+  (lst-loop 0))
 
-  (define (cols-around x y dif-col dif-row was-alive)
-    (if (<= dif-col 1)
-        (begin
-          (if (not
-               (and (equal? dif-col 0)
-                    (equal? dif-row 0)))
-              (let ((ind-x (modulo (+ x dif-col nb-col) nb-col))
-                    (ind-y (modulo (+ y dif-row nb-row) nb-row)))
-                (let ((old-nb (vector-ref (vector-ref around ind-y) ind-x)))
-                  (vector-set!
-                   (vector-ref around ind-y)
-                   ind-x
-                   (+ old-nb
-                      (if was-alive
-                          (max -1 (- 0 old-nb))
-                          1))))))
-          (cols-around x y (+ dif-col 1) dif-row was-alive))))
+(define (reset-grid)
+  (let ((cell-list (query-selector-all "td")))
+    (let ((list-length (js->scm (##inline-host-expression "(@1@).length;" cell-list))))
+      (reset-lst cell-list list-length))))
 
-  (define (rows-around x y dif-row was-alive)
-    (if (<= dif-row 1)
-        (begin
-          (cols-around x y -1 dif-row was-alive)
-          (rows-around x y (+ dif-row 1) was-alive))))
+(define (transfer-row i)
+  (vector-set! old-around i (vector-copy (vector-ref around i))))
 
-  (define (iterate-on-row i no-row)
-    (if (< i nb-col)
-        (begin
-          (let ((nb-around (vector-ref (vector-ref old-around no-row) i))
-                (was-alive (vector-ref (vector-ref alive no-row) i)))
+(define (transfer-rows)
+  (map transfer-row int-row))
+
+(define (generate-gen-gen-for-direction nb-elem)
+  (lambda (indice)
+    (let ((ind-plus-nb (+ indice nb-elem)))
+      (lambda (dif)
+        (modulo (+ ind-plus-nb dif) nb-elem)))))
+
+(define gen-gen-for-col
+  (generate-gen-gen-for-direction nb-col))
+
+(define gen-for-col
+  (map gen-gen-for-col int-col))
+
+(define (extract-cols-around col-fct)
+  (vector (map col-fct int-dif-around)))
+
+(define cols-around
+  (append-vectors (map extract-cols-around gen-for-col)))
+
+(define gen-gen-for-row
+  (generate-gen-gen-for-direction nb-row))
+
+(define gen-for-row
+  (map gen-gen-for-row int-row))
+
+(define (extract-rows-around row-fct)
+  (vector (map row-fct int-dif-around)))
+
+(define rows-around
+  (append-vectors (map extract-rows-around gen-for-row)))
+
+(define coordos-around
+  (append-vectors
+   (map
+    (lambda (row)
+      (let ((coordo-y (vector-ref rows-around row)))
+        (vector
+         (append-vectors
+          (map
+           (lambda (col)
+             (let ((coordo-x (vector-ref cols-around col)))
+               (vector
+                (apply
+                 append
+                 (map
+                  (lambda (y)
+                    (append
+                     (map
+                      (lambda (x)
+                        (if (or
+                             (not (equal? x col))
+                             (not (equal? y row)))
+                            (list x y)))
+                      coordo-x)))
+                  coordo-y)))))
+           int-col)))))
+    int-row)))
+
+#|
+(map
+ (lambda (no-row)
+   (let ((around-y (vector-ref coordos-around no-row)))
+     (map
+      (lambda (no-col)
+        (let ((around-x (vector-ref around-y no-col)))
+          (console.log (append-strings `("around:x" ,(number->string no-col) "y" ,(number->string no-row))))
+          (map
+           (lambda (elem)
+             (console.log
+              (if (pair? elem)
+                  (append-strings `("x" ,(number->string (car elem)) "y" ,(number->string (cadr elem))))
+                  "NULL")))
+           around-x)
+          (console.log "-----")))
+      '(0 1 2))
+     (console.log "=====")))
+ '(0 1 2))
+|#
+
+(define (generate-gen-for-row row)
+  (let ((rows-around (vector-ref coordos-around row)))
+    (lambda (col)
+      (let ((id (make-id col row))
+            (cells-around (vector-ref rows-around col)))
+        (lambda ()
+          (let ((nb-around (vector-ref (vector-ref old-around row) col))
+                (was-alive (vector-ref (vector-ref alive row) col)))
             (let ((is-alive
                    (or (equal? nb-around 3)
                        (and (equal? nb-around 2)
                             was-alive))))
-              (vector-set! (vector-ref alive no-row) i is-alive)
+              (vector-set! (vector-ref alive row) col is-alive)
               (set-attribute
-               (get-element-by-id (make-id i no-row))
+               (get-element-by-id id)
                "class"
                (if is-alive
                    "alive"
                    "dead"))
               (if (not (equal? was-alive is-alive))
-                  (rows-around i no-row -1 was-alive))))
-          (iterate-on-row (+ i 1) no-row))))
+                  (let ((dif (if was-alive -1 1)))
+                    (map
+                     (lambda (elem)
+                       (if (pair? elem)
+                           (let ((ind-x (car elem))
+                                 (ind-y (cadr elem)))
+                             (let ((old-nb (vector-ref (vector-ref around ind-y) ind-x)))
+                               (vector-set!
+                                (vector-ref around ind-y)
+                                ind-x
+                                (+ old-nb (max dif (- 0 old-nb))))))))
+                     cells-around))))))))))
 
-  (define (iterate-on-array i)
-    (if (< i nb-row)
-        (begin
-          (iterate-on-row 0 i)
-          (iterate-on-array (+ i 1)))))
+(define row-gen-lst
+  (map generate-gen-for-row int-row))
 
-  (define (reset-grid)
-    (let ((cell-list (query-selector-all "td")))
-      (let ((list-length (js->scm (##inline-host-expression "(@1@).length;" cell-list))))
-        ((lambda (lst size)
-           (define (lst-loop i)
-             (if (< i size)
-                 (begin
-                   (remove-attribute
-                    (##inline-host-expression "(@1@)[@2@];" lst (scm->js i))
-                    "class")
-                   (lst-loop (+ i 1)))))
-           (lst-loop 0))
-         cell-list
-         list-length))))
+(define (extract-cell-action-lst row-fct)
+  (map row-fct int-col))
 
+(define cell-action-lst
+  (map extract-cell-action-lst row-gen-lst))
+
+(define (exec-cell cell-fct)
+  (cell-fct))
+
+(define (exec-row row)
+  (map exec-cell row))
+
+(define (act-on-array)
+  (map exec-row cell-action-lst))
+
+(define (game-of-life)
   (if game-on
       (begin
         (custom-timeout)
-        (transfer-row 0)
-        (iterate-on-array 0))
+        (transfer-rows)
+        (act-on-array))
       (begin
         (reset-grid)
         (remove-attribute
