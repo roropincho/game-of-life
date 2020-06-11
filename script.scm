@@ -9,11 +9,11 @@
 
 (define nb-row 25)
 
-(define alive (make-vector nb-row))
+(define alive (vector nb-row))
 
-(define around (make-vector nb-row))
+(define around (vector nb-row))
 
-(define old-around (make-vector nb-row))
+(define old-around (vector nb-row))
 
 (define game-on #f)
 
@@ -51,6 +51,9 @@
             "_"
             txt-y)))))
 
+; -------------------------------------------------------------------------
+; Reset the grid once the 'Stop!' button has been clicked
+; -------------------------------------------------------------------------
 (define (reset-lst lst size)
   (define (lst-loop i)
     (if (< i size)
@@ -66,12 +69,20 @@
     (let ((list-length (js->scm (##inline-host-expression "(@1@).length;" cell-list))))
       (reset-lst cell-list list-length))))
 
+; -------------------------------------------------------------------------
+; Copy the number of live neighbours calculated in the previous round
+; to be used for the next round of calculations
+; -------------------------------------------------------------------------
 (define (transfer-row i)
   (vector-set! old-around i (vector-copy (vector-ref around i))))
 
 (define (transfer-rows)
   (map transfer-row int-row))
 
+; -------------------------------------------------------------------------
+; Generate the indexes around each cell to avoid calculating those
+; at each iteration
+; -------------------------------------------------------------------------
 (define (generate-gen-gen-for-direction nb-elem)
   (lambda (indice)
     (let ((ind-plus-nb (+ indice nb-elem)))
@@ -129,27 +140,9 @@
            int-col)))))
     int-row)))
 
-#|
-(map
- (lambda (no-row)
-   (let ((around-y (vector-ref coordos-around no-row)))
-     (map
-      (lambda (no-col)
-        (let ((around-x (vector-ref around-y no-col)))
-          (console.log (append-strings `("around:x" ,(number->string no-col) "y" ,(number->string no-row))))
-          (map
-           (lambda (elem)
-             (console.log
-              (if (pair? elem)
-                  (append-strings `("x" ,(number->string (car elem)) "y" ,(number->string (cadr elem))))
-                  "NULL")))
-           around-x)
-          (console.log "-----")))
-      '(0 1 2))
-     (console.log "=====")))
- '(0 1 2))
-|#
-
+; -------------------------------------------------------------------------
+; Generate each cell's function to spead up each iteration's calculation
+; -------------------------------------------------------------------------
 (define (generate-gen-for-row row)
   (let ((rows-around (vector-ref coordos-around row)))
     (lambda (col)
@@ -190,17 +183,18 @@
   (map row-fct int-col))
 
 (define cell-action-lst
-  (map extract-cell-action-lst row-gen-lst))
+  (apply append (map extract-cell-action-lst row-gen-lst)))
 
 (define (exec-cell cell-fct)
   (cell-fct))
 
-(define (exec-row row)
-  (map exec-cell row))
-
 (define (act-on-array)
-  (map exec-row cell-action-lst))
+  (map exec-cell cell-action-lst))
 
+; -------------------------------------------------------------------------
+; Function that does all the necessary calls at each iteration
+; to make the animation progress
+; -------------------------------------------------------------------------
 (define (game-of-life)
   (if game-on
       (begin
@@ -215,9 +209,143 @@
 
 (##inline-host-statement "gameOfLife = g_scm2host(@1@);" game-of-life)
 
+; -------------------------------------------------------------------------
+; Set up the animation loop
+; -------------------------------------------------------------------------
 (define (custom-timeout)
   (##inline-host-statement "setTimeout(gameOfLife, 500);"))
 
+; -------------------------------------------------------------------------
+; To generate a 2d vector with nb-row and nb-col dimensions
+; and populate it with a specific value
+; -------------------------------------------------------------------------
+(define (generate-gen-array-row init-value)
+  (lambda (row)
+    (lambda (col)
+      (vector init-value))))
+
+(define gen-0-array
+  (generate-gen-array-row 0))
+
+(define gen-false-array
+  (generate-gen-array-row #f))
+
+(define (gen-array gen-fct)
+  (let ((gen-row
+         (lambda (row)
+           (let ((row-fct (gen-fct row)))
+             (vector
+              (append-vectors
+               (map
+                row-fct
+                int-col)))))))
+    (append-vectors
+     (map
+      gen-row
+      int-row))))
+
+; -------------------------------------------------------------------------
+; Note which cells were selected by the end user
+; and make initial calculations.
+; -------------------------------------------------------------------------
+(define (generate-gen-init-row row)
+  (let ((rows-around (vector-ref coordos-around row)))
+    (lambda (col)
+      (let ((id (make-id col row))
+            (cells-around (vector-ref rows-around col)))
+        (lambda ()
+          (let ((cell (get-element-by-id id)))
+            (let ((old-class (get-attribute cell "class")))
+              (let ((is-alive
+                     (and (usable-obj? old-class)
+                          (string=? "selected" old-class))))
+                (vector-set! (vector-ref alive row) col is-alive)
+                (set-attribute
+                 cell
+                 "class"
+                 (if is-alive
+                     "alive"
+                     "dead"))
+                (if is-alive
+                    (map
+                     (lambda (elem)
+                       (if (pair? elem)
+                           (let ((ind-x (car elem))
+                                 (ind-y (cadr elem)))
+                             (let ((old-nb (vector-ref (vector-ref around ind-y) ind-x)))
+                               (vector-set!
+                                (vector-ref around ind-y)
+                                ind-x
+                                (+ old-nb 1))))))
+                     cells-around))))))))))
+
+(define row-gen-init-lst
+  (map generate-gen-init-row int-row))
+
+(define (extract-cell-init-lst row-fct)
+  (map row-fct int-col))
+
+(define cell-init-lst
+  (apply append (map extract-cell-init-lst row-gen-init-lst)))
+
+(define (init-grid)
+  (map exec-cell cell-init-lst))
+
+; -------------------------------------------------------------------------
+; Start the game
+; -------------------------------------------------------------------------
+(define (init-life)
+  (begin
+    (set! alive (gen-array gen-false-array))
+    (set! around (gen-array gen-0-array))
+    (set! old-around (gen-array gen-0-array))
+    (init-grid)
+    (set! game-on #t)
+    (custom-timeout)))
+
+; -------------------------------------------------------------------------
+; What happens when the 'GO!' button
+; -------------------------------------------------------------------------
+(define (start-life)
+  (set-attribute
+   (get-element-by-id id-go-btn)
+   "disabled"
+   "true")
+  (let ((stop-btn (get-element-by-id id-stop-btn)))
+    (if (has-attribute stop-btn "disabled")
+        (remove-attribute stop-btn "disabled")))
+  (init-life))
+
+(##inline-host-statement "startLife = g_scm2host(@1@);" start-life)
+
+; -------------------------------------------------------------------------
+; What happens when the 'Stop!' button
+; -------------------------------------------------------------------------
+(define (stop-life)
+  (set-attribute
+   (get-element-by-id id-stop-btn)
+   "disabled"
+   "true")
+  (let ((go-btn (get-element-by-id id-go-btn)))
+    (if (has-attribute go-btn "disabled")
+        (remove-attribute go-btn "disabled")))
+  (set! game-on #f))
+
+(##inline-host-statement "stopLife = g_scm2host(@1@);" stop-life)
+
+; -------------------------------------------------------------------------
+; Functions used to construct the GUI rows
+; -------------------------------------------------------------------------
+(define (generate-row-string row)
+  (html->string
+   (<tr> id: (make-id "_" row))))
+
+(define (extract-rows)
+  (append-strings (map generate-row-string int-row)))
+
+; -------------------------------------------------------------------------
+; Functions used to construct the GUI cells
+; -------------------------------------------------------------------------
 (define (cell-click id)
   (if (not game-on)
       (let ((cell (get-element-by-id id)))
@@ -232,145 +360,29 @@
 
 (##inline-host-statement "cellClick = g_scm2host(@1@);" cell-click)
 
-(define (construct-cells i base no-row)
-  (if (< i nb-col)
-      (let ((id-temp (make-id i no-row)))
-        (construct-cells
-         (+ i 1)
-         (string-append
-          base
-          (html->string
-           (<td> id: id-temp
-                 onclick: "cellClick(this.id);"
-                 (<div>))))
-         no-row))
-      base))
+(define (generate-gen-for-row-string row)
+  (lambda (col)
+    (html->string
+     (<td> id: (make-id col row)
+           onclick: "cellClick(this.id);"
+           (<div>)))))
 
-(define (construct-row-content i)
-  (if (< i nb-row)
-      (begin
-        (set-inner-html
-         (query-selector
-          (string-append
-           "tr:nth-of-type("
-           (number->string (+ i 1))
-           ")"))
-         (construct-cells 0 "" i))
-        (construct-row-content (+ i 1)))))
+(define (extract-row-content row-fct)
+  (append-strings
+   (map row-fct int-col)))
 
-(define (construct-rows i base)
-  (if (< i nb-row)
-      (construct-rows
-       (+ i 1)
-       (string-append
-        base
-        (html->string
-         (<tr>))))
-      base))
+(define (add-row-content row)
+  (let ((row-fct (generate-gen-for-row-string row)))
+    (set-inner-html
+     (get-element-by-id (make-id "_" row))
+     (extract-row-content row-fct))))
 
-(define (init-life)
-  (define (fill-row i array init-value)
-    (if (< i nb-row)
-        (fill-row
-         (+ i 1)
-         (vector-append
-          array
-          (vector init-value))
-         init-value)
-        array))
-  
-  (define (fill-array i array init-value)
-    (if (< i nb-row)
-        (fill-array
-         (+ i 1)
-         (vector-append
-          array
-          (vector (fill-row 0 (vector) init-value)))
-         init-value)
-        array))
+(define (construct-cells)
+  (map add-row-content int-row))
 
-  (define (cols-around x y dif-col dif-row)
-    (if (<= dif-col 1)
-        (begin
-          (if (not
-               (and (equal? dif-col 0)
-                    (equal? dif-row 0)))
-              (let ((ind-x (modulo (+ x dif-col nb-col) nb-col))
-                    (ind-y (modulo (+ y dif-row nb-row) nb-row)))
-                (vector-set!
-                 (vector-ref around ind-y)
-                 ind-x
-                 (+ 1 (vector-ref (vector-ref around ind-y) ind-x)))
-                (vector-set!
-                 (vector-ref old-around ind-y)
-                 ind-x
-                 (+ 1 (vector-ref (vector-ref old-around ind-y) ind-x)))))
-          (cols-around x y (+ dif-col 1) dif-row))))
-
-  (define (rows-around x y dif-row)
-    (if (<= dif-row 1)
-        (begin
-          (cols-around x y -1 dif-row)
-          (rows-around x y (+ dif-row 1)))))
-
-  (define (iterate-on-row i no-row)
-    (if (< i nb-col)
-        (begin
-          (let ((cell-temp (get-element-by-id (make-id i no-row))))
-            (let ((old-class (get-attribute cell-temp "class")))
-              (let ((is-alive
-                     (and (usable-obj? old-class)
-                          (string=? "selected" old-class))))
-                (begin
-                  (set-attribute
-                   cell-temp
-                   "class"
-                   (if is-alive
-                       "alive"
-                       "dead"))
-                  (vector-set! (vector-ref alive no-row) i is-alive)
-                  (if is-alive
-                      (rows-around i no-row -1))))))
-          (iterate-on-row (+ i 1) no-row))))
-
-  (define (iterate-on-array i)
-    (if (< i nb-row)
-        (begin
-          (iterate-on-row 0 i)
-          (iterate-on-array (+ i 1)))))
-
-  (begin
-    (set! alive (fill-array 0 (vector) #f))
-    (set! around (fill-array 0 (vector) 0))
-    (set! old-around (fill-array 0 (vector) 0))
-    (iterate-on-array 0)
-    (set! game-on #t)
-    (custom-timeout)))
-
-(define (start-life)
-  (set-attribute
-   (get-element-by-id id-go-btn)
-   "disabled"
-   "true")
-  (let ((stop-btn (get-element-by-id id-stop-btn)))
-    (if (has-attribute stop-btn "disabled")
-        (remove-attribute stop-btn "disabled")))
-  (init-life))
-
-(##inline-host-statement "startLife = g_scm2host(@1@);" start-life)
-
-(define (stop-life)
-  (set-attribute
-   (get-element-by-id id-stop-btn)
-   "disabled"
-   "true")
-  (let ((go-btn (get-element-by-id id-go-btn)))
-    (if (has-attribute go-btn "disabled")
-        (remove-attribute go-btn "disabled")))
-  (set! game-on #f))
-
-(##inline-host-statement "stopLife = g_scm2host(@1@);" stop-life)
-
+; -------------------------------------------------------------------------
+; Page construction
+; -------------------------------------------------------------------------
 (begin
   (##inline-host-statement "document.title = 'Game of Life | Scheme to Javascript';")
   
@@ -451,9 +463,9 @@
   
   (set-inner-html
    (query-selector "table")
-   (construct-rows 0 ""))
+   (extract-rows))
 
-  (construct-row-content 0)
+  (construct-cells)
   
   (document.write
    (<button>
