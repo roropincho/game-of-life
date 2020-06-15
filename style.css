@@ -1,0 +1,66 @@
+* {
+    border: 0;
+    border-collapse: collapse;
+    margin: 0;
+    padding: 0;
+    transition: 0.25s background-color, 0.25s color, 0.25s opacity;
+}
+body {
+    text-align: center;
+}
+table {
+    margin: 10px auto;
+    padding: 10px;
+}
+tr {
+    height: 25px;
+}
+td {
+    position: relative;
+    width: 25px;
+}
+td div {
+    background-color: lightGrey;
+    border-radius: 50%;
+    bottom: 2.5px;
+    left: 2.5px;
+    position: absolute;
+    right: 2.5px;
+    top: 2.5px;
+}
+td:not(.dead):not(.alive):hover {
+    cursor: pointer;
+    opacity: 0.5;
+}
+td.selected div {
+    background-color: salmon;
+}
+td.dead {
+    opacity: 0.5;
+}
+td.alive div {
+    background-color: darkRed;
+}
+button, button:disabled:hover {
+    background-color: lightGrey;
+    color: darkRed;
+}
+button {
+    border-radius: 12.5px;
+    margin: 0 0 0 15px;
+    padding: 10px 15px;
+}
+button + button {
+    margin-left: 5px;
+}
+button:disabled {
+    color: darkRed;
+    opacity: 0.25;
+}
+button:hover {
+    background-color: darkRed;
+    color: lightGrey;
+}
+button:not(:disabled):hover {
+    cursor: pointer;
+}
