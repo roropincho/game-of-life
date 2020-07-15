@@ -1,6 +1,6 @@
-(##include "~/gambit/lib/gambit#.scm")
-(##include "~/gambit/examples/web-server/html.scm")
-(##include "js.scm")
+(import (gambit))
+(##include "userlib/github.com/roropincho/scm2js/@/html/html.scm")
+(##include "userlib/github.com/roropincho/scm2js/@/js/js.scm")
 
 (declare
  (extended-bindings))
@@ -58,14 +58,14 @@
   (define (lst-loop i)
     (if (< i size)
         (begin
-          (remove-attribute
-           (##inline-host-expression "(@1@)[@2@];" lst (scm->js i))
+          (element.removeAttribute
+           (js->foreign (##inline-host-expression "(@1@)[@2@];" lst (scm->js i)))
            "class")
           (lst-loop (+ i 1)))))
   (lst-loop 0))
 
 (define (reset-grid)
-  (let ((cell-list (query-selector-all "td")))
+  (let ((cell-list (foreign->js (.querySelectorAll (document-obj) "td"))))
     (let ((list-length (js->scm (##inline-host-expression "(@1@).length;" cell-list))))
       (reset-lst cell-list list-length))))
 
@@ -156,8 +156,8 @@
                        (and (equal? nb-around 2)
                             was-alive))))
               (vector-set! (vector-ref alive row) col is-alive)
-              (set-attribute
-               (get-element-by-id id)
+              (element.setAttribute
+               (document.getElementById id)
                "class"
                (if is-alive
                    "alive"
@@ -203,8 +203,8 @@
         (act-on-array))
       (begin
         (reset-grid)
-        (remove-attribute
-         (get-element-by-id id-go-btn)
+        (element.removeAttribute
+         (document.getElementById id-go-btn)
          "disabled"))))
 
 (##inline-host-statement "gameOfLife = g_scm2host(@1@);" game-of-life)
@@ -254,13 +254,14 @@
       (let ((id (make-id col row))
             (cells-around (vector-ref rows-around col)))
         (lambda ()
-          (let ((cell (get-element-by-id id)))
-            (let ((old-class (get-attribute cell "class")))
+          (let ((cell (document.getElementById id)))
+            (let ((old-class (element.getAttribute cell "class")))
               (let ((is-alive
-                     (and (usable-obj? old-class)
+                     (and (not (null? old-class))
+                          (not (equal? old-class (undefined-obj)))
                           (string=? "selected" old-class))))
                 (vector-set! (vector-ref alive row) col is-alive)
-                (set-attribute
+                (element.setAttribute
                  cell
                  "class"
                  (if is-alive
@@ -307,13 +308,13 @@
 ; What happens when the 'GO!' button
 ; -------------------------------------------------------------------------
 (define (start-life)
-  (set-attribute
-   (get-element-by-id id-go-btn)
+  (element.setAttribute
+   (document.getElementById id-go-btn)
    "disabled"
    "true")
-  (let ((stop-btn (get-element-by-id id-stop-btn)))
-    (if (has-attribute stop-btn "disabled")
-        (remove-attribute stop-btn "disabled")))
+  (let ((stop-btn (document.getElementById id-stop-btn)))
+    (if (element.hasAttribute stop-btn "disabled")
+        (element.removeAttribute stop-btn "disabled")))
   (init-life))
 
 (##inline-host-statement "startLife = g_scm2host(@1@);" start-life)
@@ -322,13 +323,13 @@
 ; What happens when the 'Stop!' button
 ; -------------------------------------------------------------------------
 (define (stop-life)
-  (set-attribute
-   (get-element-by-id id-stop-btn)
+  (element.setAttribute
+   (document.getElementById id-stop-btn)
    "disabled"
    "true")
-  (let ((go-btn (get-element-by-id id-go-btn)))
-    (if (has-attribute go-btn "disabled")
-        (remove-attribute go-btn "disabled")))
+  (let ((go-btn (document.getElementById id-go-btn)))
+    (if (element.hasAttribute go-btn "disabled")
+        (element.removeAttribute go-btn "disabled")))
   (set! game-on #f))
 
 (##inline-host-statement "stopLife = g_scm2host(@1@);" stop-life)
@@ -348,12 +349,13 @@
 ; -------------------------------------------------------------------------
 (define (cell-click id)
   (if (not game-on)
-      (let ((cell (get-element-by-id id)))
-        (let ((old-class (get-attribute cell "class")))
-          (set-attribute
+      (let ((cell (document.getElementById id)))
+        (let ((old-class (element.getAttribute cell "class")))
+          (element.setAttribute
            cell
            "class"
-           (if (or (not (usable-obj? old-class))
+           (if (or (null? old-class)
+                   (equal? old-class (undefined-obj))
                    (string=? "" old-class))
                "selected"
                ""))))))
@@ -373,53 +375,67 @@
 
 (define (add-row-content row)
   (let ((row-fct (generate-gen-for-row-string row)))
-    (set-inner-html
-     (get-element-by-id (make-id "_" row))
+    (element.innerHTML
+     (document.getElementById (make-id "_" row))
      (extract-row-content row-fct))))
 
 (define (construct-cells)
   (map add-row-content int-row))
 
+(define new-style
+  (let ((temp (document.createElement "style")))
+    (begin
+      (element.setAttribute temp "type" "text/css")
+      (element.innerHTML
+        temp
+        (append-strings
+          `("table {"
+              "witdh: " ,(number->string (* nb-col 25)) "px;"
+            "}")))
+      temp)))
+
+(define new-link
+  (let ((temp (document.createElement "link")))
+    (begin
+      (element.setAttribute temp "rel" "stylesheet")
+      (element.setAttribute temp "href" "style.css")
+      temp)))
+  
 ; -------------------------------------------------------------------------
 ; Page construction
 ; -------------------------------------------------------------------------
 (begin
   (##inline-host-statement "document.title = 'Game of Life | Scheme to Javascript';")
+
+  (element.appendChild
+   (.querySelector (document-obj) "head")
+   new-style)
   
-  (append-html
-   (query-selector "head")
-   (<style>
-    type: "text/css"
-    (append-strings
-     `("table {"
-         "width: " ,(number->string (* nb-col 25)) "px;"
-       "}"))))
+  (element.appendChild
+   (.querySelector (document-obj) "head")
+   new-link)
   
-  (append-html
-   (query-selector "head")
-   (<link>
-    rel: "stylesheet"
-    href: "style.css"))
+  (document.write (html->string (<table>)))
   
-  (document.write (<table>))
-  
-  (set-inner-html
-   (query-selector "table")
+  (element.innerHTML
+   (.querySelector (document-obj) "table")
    (extract-rows))
 
   (construct-cells)
   
   (document.write
-   (<button>
-    id: id-go-btn
-    onclick: "startLife()"
-    type: "button"
-    "GO!"))
+   (html->string
+     (<button>
+      id: id-go-btn
+      onclick: "startLife()"
+      type: "button"
+      "GO!")))
   
   (document.write
-   (<button>
-    id: id-stop-btn
-    disabled:
-    onclick: "stopLife()"
-    type: "button"
-    "Stop!")))
+   (html->string
+     (<button>
+      id: id-stop-btn
+      disabled:
+      onclick: "stopLife()"
+      type: "button"
+      "Stop!"))))
